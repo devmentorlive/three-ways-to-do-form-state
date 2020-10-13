@@ -1,28 +1,49 @@
-import React from 'react';
-import useLogin from './use-login';
+import React, { useReducer } from 'react';
+import { login } from '../utils';
+import loginReducer from './reducer';
 
+// leaky abstraction
+const initalState = {
+  username: '',
+  password: '',
+  loggedIn: false,
+  loading: false,
+  error: null,
+};
+
+// leaky abstraction
+const actions = {
+  LOGIN: 'login',
+  LOGOUT: 'logout',
+  SUCCESS: 'success',
+  ERROR: 'error',
+  FIELD: 'field',
+};
+
+// 142 lines of code
 export default function Form() {
-  const {
-    values,
-    setUsername,
-    setPassword,
-    login,
-    logout,
-  } = useLogin();
+  const [state, dispatch] = useReducer(loginReducer, initalState);
+  const { username, password, loading, error, loggedIn } = state;
 
   async function onSubmit(e) {
     e.preventDefault();
-    login();
+    dispatch({ type: 'login' }); // susceptible to typos
+    try {
+      await login({ username, password });
+      dispatch({ type: actions.SUCCESS });
+    } catch (error) {
+      dispatch({ type: actions.ERROR });
+    }
   }
-
-  const { username, password, loading, loggedIn, error } = values;
 
   return (
     <div className='login-container'>
       {loggedIn ? (
         <>
           <h1>Hello {username}</h1>
-          <button onClick={logout}>Log out</button>
+          <button onClick={() => dispatch({ type: actions.LOGOUT })}>
+            Log out
+          </button>
         </>
       ) : (
         <form onSubmit={onSubmit}>
@@ -31,13 +52,25 @@ export default function Form() {
           <input
             type='text'
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) =>
+              dispatch({
+                type: actions.FIELD,
+                field: 'username',
+                value: e.target.value,
+              })
+            }
             placeholder='username'
           />
           <input
             type='text'
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) =>
+              dispatch({
+                type: actions.FIELD,
+                field: 'password',
+                value: e.target.value,
+              })
+            }
             placeholder='password'
           />
           <button disabled={loading} type='submit'>
